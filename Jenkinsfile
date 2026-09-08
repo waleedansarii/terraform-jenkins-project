@@ -81,9 +81,6 @@ pipeline {
                             echo "${ec2_ip} ansible_user=${SSH_USER} ansible_ssh_private_key_file=${SSH_PRIV_KEY} ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> temp_inventory.ini
                         """
 
-                        // Ensure Ansible is installed
-                        sh 'sudo apt-get update && sudo apt-get install -y ansible'
-
                         // Run Ansible playbook
                         sh 'ansible-playbook -i temp_inventory.ini configure_ec2.yml'
                     }
