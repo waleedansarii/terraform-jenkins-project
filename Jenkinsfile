@@ -63,38 +63,37 @@ pipeline {
             }
         }
 
-        // --- NEW ANSIBLE STAGE ---
         stage('Ansible Configuration') {
             steps {
-                // 1. Inject AWS credentials so Terraform can read the state
+                // Combine BOTH AWS and SSH credentials in a SINGLE block
                 withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'],
+                    sshUserPrivateKey(credentialsId: 'ec2-ssh-private-key', keyFileVariable: 'SSH_PRIV_KEY', usernameVariable: 'SSH_USER')
                 ]) {
-                    // 2. Inject SSH credentials so Ansible can connect to the server
-                    withCredentials([
-                        sshUserPrivateKey(credentialsId: 'ec2-ssh-private-key', keyFileVariable: 'SSH_PRIV_KEY', usernameVariable: 'SSH_USER')
-                    ]) {
-                        script {
-                            // Now this will work because AWS creds are in the environment!
-                            def ec2_ip = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
-                            echo "Targeting EC2 Instance at IP: ${ec2_ip}"
+                    script {
+                        // Extract the public IP dynamically from Terraform state
+                        def ec2_ip = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
+                        echo "Targeting EC2 Instance at IP: ${ec2_ip}"
 
-                            // Generate temporary inventory
-                            sh """
-                                echo "[target_servers]" > temp_inventory.ini
-                                echo "${ec2_ip} ansible_user=${SSH_USER} ansible_ssh_private_key_file=${SSH_PRIV_KEY} ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> temp_inventory.ini
-                            """
+                        // Generate temporary inventory
+                        sh """
+                            echo "[target_servers]" > temp_inventory.ini
+                            echo "${ec2_ip} ansible_user=${SSH_USER} ansible_ssh_private_key_file=${SSH_PRIV_KEY} ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> temp_inventory.ini
+                        """
 
-                            // Run Ansible
-                            sh 'ansible-playbook -i temp_inventory.ini configure_ec2.yml'
-                        }
+                        // Ensure Ansible is installed
+                        sh 'sudo apt-get update && sudo apt-get install -y ansible'
+
+                        // Run Ansible playbook
+                        sh 'ansible-playbook -i temp_inventory.ini configure_ec2.yml'
                     }
                 }
             }
         }
+    }
+    
     post {
         always {
-            // Clean up workspace, including the temporary inventory file
             cleanWs() 
         }
         success {
