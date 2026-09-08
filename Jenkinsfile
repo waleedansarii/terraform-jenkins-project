@@ -82,7 +82,7 @@ pipeline {
                         """
 
                         // Run Ansible playbook
-                        sh 'ansible-playbook -i temp_inventory.ini configure_ec2.yml'
+                        sh 'ansible-playbook -i temp_inventory.ini configure-ec2.yml'
                     }
                 }
             }
