@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         TF_IN_AUTOMATION = 'true' // Reduces verbose output in Jenkins logs
+	TF_PLUGIN_CACHE_DIR = '/var/jenkins_home/.terraform.d/plugin-cache'  // Persistent cache
     }
 
     stages {
