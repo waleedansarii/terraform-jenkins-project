@@ -1,0 +1,24 @@
+---
+- name: Configure Provisioned EC2 Instance
+  hosts: all
+  become: yes # Run tasks with sudo
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Docker and Nginx
+      apt:
+        name:
+          - docker.io
+          - nginx
+        state: present
+
+    - name: Ensure Docker and Nginx services are running and enabled
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - docker
+        - nginx
